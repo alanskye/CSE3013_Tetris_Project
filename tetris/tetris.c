@@ -6,17 +6,48 @@
 static struct sigaction act, oact;
 
 Train_gene genomes[Train_POPULATION];
-double Recommend_weights[Recommend_FEATURES] = { // diff = after - before
-    100,        // line clear
-    10,       // touch floor
-    0.75,            // touch wall
-    2, // touch block
-    -10,     // max diff, -
-    -30,   // hole diff, -
-    0.0,    // stdev;
-    0.0,    // minmaxdiff
-    0.0,
-    0.0
+
+
+int movelimit = INT_MAX;
+
+void setmovelimit(int ep) {
+    if (ep <= 10) {
+        movelimit = 2048;
+    }
+    else if (ep <= 30) {
+        movelimit = 4096;
+    }
+    else {
+        movelimit = 2048;
+    }
+}
+
+double Recommend_weights[Recommend_FEATURES] = {
+    // 13.283115,
+    66.831550,
+    69.569523,
+    53.060176,
+    73.377174,
+    16.250823,
+    -36.264558,
+    -9.348469,
+    -80.622035,
+    -32.890379,
+    -68.241294,
+    -76.974035
+    /* weight 2
+    31.352405,
+    69.569523,
+    53.060176,
+    75.377174,
+    17.250823,
+    9.928189,
+    -9.348469,
+    -80.622035,
+    -31.890379,
+    -51.055457,
+    -76.974035
+    */
 };
 
 int max(int a, int b) {
@@ -117,15 +148,17 @@ void drawOutline() {
 	printw("NEXT BLOCK");
 	drawBox(3 ,WIDTH + 10, 4, 8);
     drawBox(9, WIDTH + 10, 4, 8);
-	/* score를 보여주는 공간의 태두리를 그린다.*/
-	move(16 ,WIDTH + 10);
+	drawBox(15, WIDTH + 10, 4, 8);
+    /* score를 보여주는 공간의 태두리를 그린다.*/
+	move(24, WIDTH + 10);
 	printw("SCORE");
-	drawBox(17, WIDTH + 10, 1, 8);
+	drawBox(25, WIDTH + 10, 1, 8);
 }
 
 void drawNextBlock() {
     drawBlock(nextBlock[1], 2, WIDTH + 12, 0, ' ');
     drawBlock(nextBlock[2], 8, WIDTH + 12, 0, ' ');
+    drawBlock(nextBlock[3], 14, WIDTH + 12, 0, ' ');
     move(HEIGHT, WIDTH + 10);
 }
 
@@ -138,7 +171,7 @@ void drawChange(int cmd, int oldX, int oldY, int oldR) {
 }
 
 void printScore(int score){
-	move(18,WIDTH+11);
+	move(26, WIDTH + 11);
 	printw("%8d",score);
 }
 
@@ -147,12 +180,12 @@ int getCommand(){
 	command = wgetch(stdscr);
     switch(command){    
     case SPEED_UP:
-        Recommend_interval = max(20, Recommend_interval - 20);
+        Recommend_interval = max(20, Recommend_interval - 5);
         Recommend_setTimer(Recommend_interval);
         command = NOTHING;
         break;
     case SPEED_DN:
-        Recommend_interval = min(1000, Recommend_interval + 20);
+        Recommend_interval = min(1000, Recommend_interval + 5);
         Recommend_setTimer(Recommend_interval);
         command = NOTHING;
         break;
@@ -235,10 +268,12 @@ void blockDown(int sig){
             // 다음 블록 그림 삭제
             eraseBlock(nextBlock[1], 2, WIDTH + 12, 0, ' ');
             eraseBlock(nextBlock[2], 8, WIDTH + 12, 0, ' ');
+            eraseBlock(nextBlock[3], 14, WIDTH + 12, 0, ' ');
             // 새 블록 생성
             nextBlock[0] = nextBlock[1];
             nextBlock[1] = nextBlock[2];
-            nextBlock[2] = rand() % 7;
+            nextBlock[2] = nextBlock[3];
+            nextBlock[3] = rand() % 7;
             blockID = nextBlock[0];
             if (!train)
                 drawNextBlock();
@@ -248,7 +283,7 @@ void blockDown(int sig){
 
             // 새 블록의 recommend 구하기
             recoX = 0, recoY = WIDTH / 2 - 2, recoR = 0;
-            if (Train_move >= Train_MOVELIMIT or !drawRecommend()) {
+            if (Train_move >= movelimit or !drawRecommend()) {
                 Recommend_giveup = true;
                 if (Recommend_play)
                     gameOver = true;
@@ -332,10 +367,10 @@ void initTetris() {
         printw("epoch = %d, g = %d\n", Train_epoch, Train_currentGene);
     }
             // 새 블록 생성
-    nextBlock[0] = nextBlock[1];
-    nextBlock[1] = nextBlock[2];
+    nextBlock[0] = rand() % 7;
+    nextBlock[1] = rand() % 7;
     nextBlock[2] = rand() % 7;
-
+    nextBlock[3] = rand() % 7;
 	blockID = nextBlock[0];
     blockX = shadowX = -1;
 	blockY = shadowY = WIDTH / 2 - 2;
@@ -357,6 +392,8 @@ void initTetris() {
         blockY = recoY;
         blockR = recoR;
         drawBlock(nextBlock[0], blockX, blockY, blockR, 'R');
+        move(HEIGHT + 5, 1);
+        printw("j, k = speed up/dn");
     }
     refresh();
 }
@@ -526,7 +563,6 @@ void rank() {
     while (!exit) {
         noecho();
         char cmd = rankMenu();
-        echo();
         switch (cmd) {
             case '1': rank1();              break;
             case '2': rank2();              break;
@@ -577,8 +613,8 @@ bool drawRecommend() {
     Recommend_node ideal = Recommend_search(field, 0);
     if (train) {
         Train_move++;
-        move(HEIGHT + 10, 1);
-        printw("move10 = %d\n", Train_move / 10);
+        move(HEIGHT + 2, 1);
+        printw("move10 = %2d %d\n", Train_move / 100, movelimit);
     }
     if (ideal.score == Recommend_MIN) return false;
     
@@ -625,7 +661,7 @@ int Recommend_holeCnt(const int f[HEIGHT]) {
     return h;
 }
 
-void Recommend_stdev_minmax_cols(const int f[HEIGHT], double *stdev, int *absminmax, double *colmax, double *colsum) {
+void Recommend_features(const int f[HEIGHT], double *stdev, int *absminmax, double *colmax, double *colsum, int *roughness) {
     int top[WIDTH] = {0};
     for (int j = 0; j < WIDTH; j++) {
         for (int i = 0; i < HEIGHT; i++) {
@@ -636,14 +672,17 @@ void Recommend_stdev_minmax_cols(const int f[HEIGHT], double *stdev, int *absmin
         }
     }
     double s = 0.0, mean = 0.0;
-   int a = 100, b = -1;
-
+    int rough = 0;
+    int a = 100, b = -1;
     for (int j = 0; j < WIDTH; j++) {
         mean += top[j];
         a = min(a, top[j]);
         b = max(b, top[j]);
+        if (j != 0) {
+            rough += (top[j] - top[j - 1]) * (top[j] - top[j - 1]);
+        }
     }
-
+    *roughness = rough;
     *colmax = b;
     *colsum = mean;
 
@@ -660,11 +699,9 @@ double Recommend_evaluate(const int f[HEIGHT], int lv, int x, int y, int r) {
     double vector[Recommend_FEATURES] = {0};
     int temp[HEIGHT] = {0}, d[HEIGHT] = {0}, after[HEIGHT] = {0};
     int befMax = 0, aftMax = 0, maxDiff;
-    int befHole, aftHole, holeDiff;
+    int aftHole;
     double stdev, colmax, colsum;
-    int absminmax;
-
-    befHole = Recommend_holeCnt(f);
+    int absminmax, rough;
     
     for (int b = 0; b < 4; b++) {
         for (int d = 0; d < 4; d++) {
@@ -678,7 +715,6 @@ double Recommend_evaluate(const int f[HEIGHT], int lv, int x, int y, int r) {
             }
             if (i >= 0 and f[i] & (1 << j))
                 vector[Recommend_TOUCHBLOCK] += 1.0;
-            
         }
     } 
 
@@ -699,22 +735,22 @@ double Recommend_evaluate(const int f[HEIGHT], int lv, int x, int y, int r) {
         after[i + d[i]] = temp[i];
         if (temp[i]) aftMax = i + d[i];
     }
-    Recommend_stdev_minmax_cols(f, &stdev, &absminmax, &colmax, &colsum);
+    Recommend_features(f, &stdev, &absminmax, &colmax, &colsum, &rough);
     // diff = after - before
     aftHole = Recommend_holeCnt(after);
-    holeDiff = aftHole - befHole;
 
     befMax = HEIGHT - befMax;
     aftMax = HEIGHT - aftMax;
     maxDiff = aftMax - befMax;
 
-    vector[Recommend_LINECLEAR] += sum;
-    vector[Recommend_MAXDIFF] += maxDiff;
-    vector[Recommend_HOLEDIFF] += holeDiff;
-    vector[Recommend_STDEV] += stdev;
-    vector[Recommend_ABSMINMAX] += absminmax;
-    vector[Recommend_COLMAX] += colmax;
-    vector[Recommend_COLSUM] += colsum;
+    vector[Recommend_LINECLEAR] = sum;
+    vector[Recommend_MAXDIFF] = maxDiff;
+    vector[Recommend_ROUGHNESS] = rough;
+    vector[Recommend_STDEV] = stdev;
+    vector[Recommend_ABSMINMAX] = absminmax;
+    vector[Recommend_COLMAX] = colmax;
+    vector[Recommend_COLSUM] = colsum;
+    vector[Recommend_HOLEAFT] = aftHole;
     for (int i = 0; i < Recommend_FEATURES; i++)
         ret += Recommend_weights[i] * vector[i]; 
     return ret;
@@ -804,6 +840,8 @@ Recommend_node Recommend_search(const int f[HEIGHT], int lv) {
     ret = cand[retIdx];
     if (nextScore != Recommend_MIN)
         ret.score += nextScore;
+    else
+        ret.score - 1000000;
     free(cand);
     return ret;
 }
@@ -813,8 +851,10 @@ void Recommend_initTimer() {
 }
 
 void Recommend_setTimer(int newInterval) {
-    move(HEIGHT + 4, 1);
-    printw("timer ok %d\n", newInterval);
+    if (Recommend_play) {
+        move(HEIGHT + 6, 1);
+        printw("drop inveral = %04dms\n", newInterval);
+    }
     Recommend_interval = newInterval;
     Recommend_it.it_value.tv_sec = Recommend_interval / 1000;
     Recommend_it.it_value.tv_usec = (Recommend_interval * 1000) % 1000000;
@@ -912,10 +952,11 @@ void Train_write(int ep) {
 }
 
 void Train_manager() {
-    Recommend_interval = 2;
-    //Train_init();
-    Train_startFrom(60);
-    for (Train_epoch = 61; Train_epoch <= 70; Train_epoch++) {
+    Recommend_interval = 1;
+    // Train_init();
+    Train_startFrom(38);
+    for (Train_epoch = 39; Train_epoch <= 39; Train_epoch++) {
+        setmovelimit(Train_epoch);
         Train_move = 0;
         for (int p = 0; p < Train_POPULATION; p++) {
             clear(); refresh();

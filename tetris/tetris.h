@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <limits.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -26,7 +27,7 @@
 #define NUM_OF_ROTATE	4
 #define BLOCK_HEIGHT	4
 #define BLOCK_WIDTH	    4
-#define BLOCK_NUM	    3
+#define BLOCK_NUM	    4
 
 // menu number
 #define MENU_PLAY       '1'
@@ -128,10 +129,10 @@ void writeRankFile();
 
 
 // week 3
-#define VISIBLE_BLOCK           3
+#define VISIBLE_BLOCK           4
 #define Recommend_CANDMAX       120
 #define Recommend_PRUNING       8
-#define Recommend_FEATURES      10
+#define Recommend_FEATURES      11
 #define Recommend_MIN           -987654321.0
 typedef struct Recommend_node {
     double score;
@@ -144,12 +145,12 @@ enum Recommend_WEIGHTNAME {
     Recommend_TOUCHWALL,
     Recommend_TOUCHBLOCK,
     Recommend_MAXDIFF,
-    Recommend_HOLEDIFF,
+    Recommend_ROUGHNESS,
     Recommend_STDEV,
     Recommend_ABSMINMAX,
     Recommend_COLMAX,
     Recommend_COLSUM,
-    Recommend_HOLEAFT
+    Recommend_HOLEAFT,
 };
 
 
@@ -173,7 +174,7 @@ double Recommend_evaluate(const int f[HEIGHT], int lv, int x, int y, int r);
 // week 3 Recommend Play
 
 bool Recommend_play = false;
-int Recommend_interval = 100;
+int Recommend_interval = 150;
 struct itimerval Recommend_it;
 
 void Recommend_initTimer();
@@ -185,12 +186,12 @@ typedef struct Train_gene {
     int score;
 } Train_gene;
 
-#define Train_POPULATION 80
+#define Train_POPULATION 128
 #define Train_MOVELIMIT 8192
-#define Train_SUPCNT 20
-#define Train_DROP 30
+#define Train_SUPCNT 32
+#define Train_DROP 32
 
-const int Train_MUTRATIO = 15;
+const int Train_MUTRATIO = 5;
 const double Train_MUTAMT = 0.05;
 
 int Train_move = 0;

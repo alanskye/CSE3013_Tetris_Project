@@ -1,16 +1,16 @@
-CC = clang
+CC = gcc
 
 TARGET = main
 OBJECTS = tetris.o treap.o
-#CFLAGS = -g -fsanitize=address -fno-optimize-sibling-calls
-CFLAGS = -O3
+# CFLAGS = -g -fsanitize=address -fno-optimize-sibling-calls
+CFLAGS = -O2
 LDFLAGS = -lncurses -lm
 
 $(TARGET) : $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJECTS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LDFLAGS) 
 
 .c.o:
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $< $(LDFLAGS) 
 
 
 .PHONY: clean
