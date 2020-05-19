@@ -1,3 +1,18 @@
+/* 
+ *
+ *  TODO Tetris week 3 comment TODO
+ *  
+ *  bool drawRecommend()는 3주차 과제의 modified_recommend()를 수행한다.
+ *  여기에는 Tree Pruning이 기본 적용되어있으며, 3주차 실습 recommend_play와 같이
+ *  모든 경우를 탐색하기 위해서는 tetris.h의 Recommend_PRUNING (default = 8)을 
+ *  Recommend_CANDMAX로 변경하면 된다.
+ *  
+ */
+
+
+
+
+
 #include "treap.h"
 #include "tetris.h"
 
@@ -7,7 +22,8 @@ static struct sigaction act, oact;
 
 Train_gene genomes[Train_POPULATION];
 
-
+double time_spent = 0.0;
+time_t gamestart;
 int movelimit = INT_MAX;
 
 void setmovelimit(int ep) {
@@ -367,6 +383,8 @@ void initTetris() {
         printw("epoch = %d, g = %d\n", Train_epoch, Train_currentGene);
     }
             // 새 블록 생성
+    time_spent = 0.0;
+    gamestart = time(NULL);
     nextBlock[0] = rand() % 7;
     nextBlock[1] = rand() % 7;
     nextBlock[2] = rand() % 7;
@@ -606,11 +624,19 @@ int Recommend_compare(const void *lhs, const void *rhs) {
 
 bool clr = false;
 int ymin, ymax;
+
 bool drawRecommend() {
     // recommned block의 삭제는 점수에 추가한 직후에 한다
     if (field[2]) return false;
     clr = false;
+    clock_t start = clock();
     Recommend_node ideal = Recommend_search(field, 0);
+    clock_t end = clock();
+    move(HEIGHT + 7, 1);
+    double time_rec = (double)(end - start) / CLOCKS_PER_SEC;
+    printw("recommend process time: [now / sum] : [%.3lf / %.3lf]\n", time_rec, time_spent);
+    time_spent += time_rec;
+    printw(" game time : %d\n", (int)(difftime(time(NULL), gamestart)));
     if (train) {
         Train_move++;
         move(HEIGHT + 2, 1);
@@ -840,8 +866,6 @@ Recommend_node Recommend_search(const int f[HEIGHT], int lv) {
     ret = cand[retIdx];
     if (nextScore != Recommend_MIN)
         ret.score += nextScore;
-    else
-        ret.score - 1000000;
     free(cand);
     return ret;
 }
@@ -990,10 +1014,12 @@ int main() {
         train = false;
         Train_move = 0;
         switch (menu()) {
+#ifdef TRAIN
             case '5': 
                 train = true;
                 Recommend_play = true;
                 Train_manager();
+#endif
             break;
             case MENU_RECO: Recommend_play = true;
             case MENU_PLAY: play();     break;
